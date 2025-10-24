@@ -21,7 +21,8 @@ spark = SparkSession.builder \
     .getOrCreate()
 
 # ------------------ STEP 2: Load dataset ------------------
-csv_path = "/Users/youssefbenmansour/Desktop/Master/period 5/Data Intensive System/project/data/dataset_10K.csv"
+csv_path = "dataset_1K.csv"
+
 df = spark.read.csv(csv_path, header=True, inferSchema=True)
 table_name = "my_table"
 df.createOrReplaceTempView(table_name)
@@ -35,7 +36,7 @@ col_stats = get_column_stats(relational_db)
 
 # ------------------ STEP 4: Generate query dictionaries ------------------
 # Use smaller batches if needed to avoid memory errors
-queries = generate_query_dicts(df, table_name, col_stats, n_queries=4000, max_conditions=5)
+queries = generate_query_dicts(df, table_name, col_stats, n_queries=100, max_conditions=1)
 
 # ------------------ STEP 5: Compute popularity in batches ------------------
 # Here we batch queries to avoid Spark shuffle/broadcast errors
