@@ -30,7 +30,7 @@ def compute_popularity(df, queries, id_col="Unique_ID"):
           .agg(F.sum("pop").alias("pop"))
     )
 
-def compute_popularity_in_batches(df, query_dicts, id_col="Patient_BSN", batch_size=50):
+def compute_popularity_in_batches(df, query_dicts, id_col="Unique_ID", batch_size=50):
     total_pop = None
 
     for i in range(0, len(query_dicts), batch_size):
