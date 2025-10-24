@@ -49,7 +49,7 @@ def get_column_stats(relational_db):
 def generate_random_queries(df, table_name, col_stats, n_queries=5, max_conditions=2):
     """
     Generate realistic random SQL queries based on column distributions (int values),
-    always including 'patient_BSN' in the SELECT clause.
+    always including 'Unique_ID' in the SELECT clause.
     """
     columns = df.columns
     queries = []
@@ -60,7 +60,7 @@ def generate_random_queries(df, table_name, col_stats, n_queries=5, max_conditio
         n_select = random.randint(1, min(3, len(columns)))
         selected_cols = random.sample(columns, n_select)
 
-        # Always include 'patient_BSN'
+        # Always include 'Unique_ID'
         if "Unique_ID" not in selected_cols and "Unique_ID" in columns:
             selected_cols.insert(0, "Unique_ID")
 
