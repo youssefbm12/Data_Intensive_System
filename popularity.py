@@ -1,47 +1,45 @@
-from functools import reduce
 from pyspark.sql import functions as F
 
-
-def compute_popularity(df, queries, id_col="Unique_ID"):
+def compute_popularity_fast(df, queries, id_col="Unique_ID"):
+    """
+    Compute popularity using a more vectorized approach.
+    Each query is converted into a filter, and we count matches efficiently.
+    """
     if not queries:
         return df.select(F.col(id_col).alias("id")).withColumn("pop", F.lit(0))
 
-    and_conds = []
+    # Initialize a column for popularity
+    df = df.withColumn("pop", F.lit(0))
+
     for q in queries:
-        if not q:
-            continue
-        cond = reduce(
-            lambda a, b: a & b,
-            (F.col(c).eqNullSafe(F.lit(v)) for c, v in q.items())
-        )
-        and_conds.append(cond)
+        # Build the AND condition directly for this query
+        cond = F.lit(True)
+        for col, val in q.items():
+            cond = cond & (F.col(col) == F.lit(val))
+        
+        # Increment popularity only for matching rows
+        df = df.withColumn("pop", F.when(cond, F.col("pop") + 1).otherwise(F.col("pop")))
 
-    if not and_conds:
-        return df.select(F.col(id_col).alias("id")).withColumn("pop", F.lit(0))
+    return df.select(F.col(id_col).alias("id"), "pop")
 
-    pop_incr = None
-    for cond in and_conds:
-        term = F.when(cond, F.lit(1)).otherwise(F.lit(0))
-        pop_incr = term if pop_incr is None else (pop_incr + term)
-
-    return (
-        df.withColumn("pop", pop_incr)
-          .groupBy(F.col(id_col).alias("id"))
-          .agg(F.sum("pop").alias("pop"))
-    )
-
-def compute_popularity_in_batches(df, query_dicts, id_col="Unique_ID", batch_size=50):
+def compute_popularity_in_batches(df, query_dicts, id_col="Unique_ID", batch_size=200):
+    """
+    Batch computation that avoids excessive joins.
+    Aggregates within Spark instead of repeated DataFrame joins.
+    """
     total_pop = None
 
     for i in range(0, len(query_dicts), batch_size):
         batch = query_dicts[i:i+batch_size]
-        batch_pop = compute_popularity(df, batch, id_col=id_col)
-        batch_pop = batch_pop.withColumnRenamed("pop", "batch_pop")  # rename to avoid ambiguity
+        batch_pop = compute_popularity_fast(df, batch, id_col=id_col)
 
         if total_pop is None:
-            total_pop = batch_pop.withColumnRenamed("batch_pop", "pop")
+            total_pop = batch_pop
         else:
-            total_pop = total_pop.join(batch_pop, on="id", how="outer").fillna(0)
-            total_pop = total_pop.withColumn("pop", F.col("pop") + F.col("batch_pop")).drop("batch_pop")
+            # Use a single join and aggregation instead of multiple joins
+            total_pop = total_pop.union(batch_pop)
+
+    # Aggregate popularity for all batches
+    total_pop = total_pop.groupBy("id").agg(F.sum("pop").alias("pop"))
 
     return total_pop.orderBy(F.col("pop").desc())
