@@ -1,7 +1,7 @@
 from popularity import compute_popularity_in_batches
 
 
-def method2 (df, queries, T,  id_col="Unique_ID"):
+def method2 (df, queries, T, feature_cols,  id_col="Unique_ID"):
 # T is how any tuples to keep
        pop_df = compute_popularity_in_batches (df, queries, id_col)
 # calculate similarity matrix
