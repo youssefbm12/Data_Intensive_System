@@ -2,6 +2,8 @@ from pyspark.sql import SparkSession
 from pyspark.ml.feature import VectorAssembler, Normalizer
 from pyspark.ml.linalg import DenseVector
 import math
+from Method2 import compute_importance_method2
+from query_generator import generate_query_dicts,get_column_stats
 
 import os
 os.environ["JAVA_HOME"] = "/opt/homebrew/Cellar/openjdk@17/17.0.16/libexec/openjdk.jdk/Contents/Home"
@@ -79,7 +81,10 @@ if __name__ == "__main__":
     columns = ["Unique_ID", "A", "B", "C", "popularity"]
     df = spark.createDataFrame(data, columns)
 
-    result_df = compute_importance_in_batches(df, pop_col="popularity", id_col="Unique_ID", batch_size=2)
+    col_stats = get_column_stats({"my_table": df})
+    queries = generate_query_dicts(df, "my_table", col_stats, n_queries=10, max_conditions=1)
+    result_df = compute_importance_method2(df, queries, feature_cols, T=None, id_col="Unique_ID", batch_size=batch_size)
+
 
     print("✅ Final importance per tuple:")
     result_df.show(truncate=False)
